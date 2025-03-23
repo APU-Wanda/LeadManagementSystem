@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use App\Http\Controllers\LeadController;
@@ -21,11 +22,12 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-    Route::middleware('auth')->group(function () {
+Route::middleware('auth')->group(function () {
 
     Route::get('/leads', [LeadController::class, 'index'])->name('leads.index');
     Route::put('/leads/{id}', [LeadController::class, 'update'])->name('leads.update');
 
+    Route::delete('/leads/delete-multiple', [LeadController::class, 'destroyMultiple'])->name('leads.delete-multiple');
 
     Route::get('/import', [LeadImportController::class, 'showImportForm'])->name('leads.import.form');
     Route::post('/import', [LeadImportController::class, 'import'])->name('leads.import');
@@ -43,4 +45,3 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
-
