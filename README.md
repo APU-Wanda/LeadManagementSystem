@@ -1,5 +1,7 @@
 # Lead Management System
 
+<img src="public/images/lead_management_system.png" alt="Description" width="400">
+
 ## Overview
 The Lead Management System is a web-based application that allows employees to import, manage, and export leads. It provides essential features such as lead CRUD operations, filtering, searching, role-based access control (RBAC), and Excel file handling.
 
