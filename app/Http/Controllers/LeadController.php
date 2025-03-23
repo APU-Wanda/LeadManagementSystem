@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Mail\LeadStatusUpdated;
@@ -17,14 +19,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class LeadController extends Controller
 {
     /**
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse|\Inertia\Response
      */
     public function index(Request $request)
     {
-        $leads = Lead::paginate(10);
+        $leads = Lead::paginate(4);
 
-         if ($request->wantsJson()) {
+        if ($request->wantsJson()) {
             return response()->json($leads);
         }
 
@@ -34,8 +35,6 @@ class LeadController extends Controller
     }
 
     /**
-     * @param Request $request
-     * @param $id
      * @return \Illuminate\Http\RedirectResponse
      */
     public function update(Request $request, $id)
@@ -49,7 +48,7 @@ class LeadController extends Controller
         ]);
 
         foreach ($validatedData as $key => $value) {
-            if ($lead->$key != $value) {
+            if ($value != $lead->$key) {
                 LeadHistory::create([
                     'lead_id' => $id,
                     'changed_field' => $key,
@@ -66,13 +65,12 @@ class LeadController extends Controller
     }
 
     /**
-     * @param $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function destroy($id)
     {
         $lead = Lead::find($id);
-        if (!$lead) {
+        if (! $lead) {
             return response()->json(['error' => 'Lead not found'], 404);
         }
         $lead->delete();
@@ -87,7 +85,7 @@ class LeadController extends Controller
     {
         $leads = Lead::select('name', 'email', 'phone', 'status', 'created_at')->get();
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->setCellValue('A1', 'Name');
@@ -113,7 +111,7 @@ class LeadController extends Controller
             $writer->save('php://output');
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
         ]);
     }
 
@@ -128,5 +126,25 @@ class LeadController extends Controller
             'in_progress' => Lead::where('status', 'In Progress')->count(),
             'closed_leads' => Lead::where('status', 'Closed')->count(),
         ]);
+    }
+
+    /**
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroyMultiple(Request $request)
+    {
+        $ids = $request->input('ids');
+
+        if (! is_array($ids) || empty($ids)) {
+            return response()->json(['error' => 'No leads selected for deletion'], 400);
+        }
+
+        $deletedCount = Lead::whereIn('id', $ids)->delete();
+
+        if ($deletedCount === 0) {
+            return response()->json(['error' => 'No matching leads found'], 404);
+        }
+
+        return response()->json(['message' => "$deletedCount leads deleted successfully"]);
     }
 }
