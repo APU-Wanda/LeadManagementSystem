@@ -24,30 +24,30 @@
     fileInput.value.click();
 };
 
-    // Import Leads function
     const importLeads = (event) => {
-    const file = event.target.files[0];
+        const file = event.target.files[0];
 
-    if (!file) {
-    error.value = "No file selected.";
-    return;
-}
+        if (!file) {
+            error.value = "No file selected.";
+            return;
+        }
 
-    const form = useForm({ file });
+        const form = useForm({ file });
 
-    form.post(route('leads.import'), {
-    forceFormData: true,
-    onSuccess: () => {
-    message.value = "Leads imported successfully!";
-    error.value = "";
-    router.reload(); // Refresh data instantly
-},
-    onError: (err) => {
-    console.error("Import failed:", err);
-    error.value = "Failed to import leads.";
-}
-});
-};
+        form.post(route('leads.import'), {
+            forceFormData: true,
+            onSuccess: (page) => {
+                message.value = page.props.flash.success || "";
+                error.value = page.props.errors ? Object.values(page.props.errors).flat().join(", ") : "";
+                router.reload();
+            },
+            onError: (err) => {
+                console.error("Import failed:", err);
+                error.value = Object.values(err).flat().join(", ");
+            }
+        });
+    };
+
 
     // Delete lead
     const deleteLead = (id) => {
@@ -70,6 +70,7 @@
     const editLead = (lead) => {
     editingLead.value = lead.id;
     updatedLead.value = { ...lead };
+        errors.value = {};
 };
 
     const updateLead = () => {
@@ -80,20 +81,56 @@
     const index = props.leads.data.findIndex(lead => lead.id === editingLead.value);
     if (index !== -1) props.leads.data[index] = { ...updatedLead.value, id: editingLead.value };
     editingLead.value = null;
-},
+        errors.value = {};
+    },
     onError: (error) => {
     console.error('Error updating lead:', error);
+        errors.value = error;
 }
 });
 };
 
     const cancelEdit = () => {
     editingLead.value = null;
+        errors.value = {};
 };
 
-    
+
     const changePage = (url) => {
         router.get(url);
+    };
+
+    const errors = ref({});
+
+    const selectedLeads = ref([]);
+    const selectAll = ref(false);
+
+    const toggleSelectAll = () => {
+        if (selectAll.value) {
+            selectedLeads.value = props.leads.data.map(lead => lead.id);
+        } else {
+            selectedLeads.value = [];
+        }
+    };
+
+    const deleteMultipleLeads = () => {
+        if (selectedLeads.value.length === 0) return;
+
+        if (!confirm(`Are you sure you want to delete ${selectedLeads.value.length} leads?`)) {
+            return;
+        }
+
+        router.delete(route('leads.delete-multiple'), {
+            data: { ids: selectedLeads.value },
+            onSuccess: () => {
+                props.leads.data = props.leads.data.filter(lead => !selectedLeads.value.includes(lead.id));
+                selectedLeads.value = [];
+                selectAll.value = false;
+            },
+            onError: (error) => {
+                console.error("Error deleting multiple leads:", error);
+            }
+        });
     };
 </script>
 
@@ -110,12 +147,18 @@
                 <option value="In Progress">In Progress</option>
                 <option value="Closed">Closed</option>
             </select>
+            <button @click="deleteMultipleLeads" :disabled="selectedLeads.length === 0" class="bg-red-600 text-white px-4 py-2  rounded">
+                Delete Multiple
+            </button>
         </div>
 
         <!-- Leads Table -->
         <table class="w-full bg-white shadow rounded-lg">
             <thead>
             <tr class="bg-gray-200">
+                <th class="p-3">
+                    <input type="checkbox" @change="toggleSelectAll" v-model="selectAll">
+                </th>
                 <th class="p-3 text-left">Name</th>
                 <th class="p-3 text-left">Email</th>
                 <th class="p-3 text-left">Phone</th>
@@ -125,13 +168,16 @@
             </thead>
             <tbody>
             <tr v-for="lead in filteredLeads" :key="lead.id" class="border-b">
+                <td class="p-3 text-center">
+                    <input type="checkbox" v-model="selectedLeads" :value="lead.id">
+                </td>
                 <td class="p-3">
                     <input v-if="editingLead === lead.id" v-model="updatedLead.name" type="text" class="border p-1 rounded" />
                     <span v-else>{{ lead.name }}</span>
                 </td>
                 <td class="p-3">
                     <input v-if="editingLead === lead.id" v-model="updatedLead.email" type="email" class="border p-1 rounded" />
-                    <span v-else>{{ lead.email }}</span>
+                     <span v-else>{{ lead.email }}</span>
                 </td>
                 <td class="p-3">
                     <input v-if="editingLead === lead.id" v-model="updatedLead.phone" type="tel" class="border p-1 rounded" />
@@ -164,7 +210,13 @@
             </tr>
             </tbody>
         </table>
-
+        <span v-if="errors.name" class="text-red-600 text-sm">{{ errors.name }}</span>
+        <br>
+        <span v-if="errors.email" class="text-red-600 text-sm">{{ errors.email }}</span>
+        <br>
+        <span v-if="errors.phone" class="text-red-600 text-sm">{{ errors.phone }}</span>
+        <br>
+        <span v-if="errors.status" class="text-red-600 text-sm">{{ errors.status }}</span>
         <div class="mt-4 flex justify-center space-x-2">
             <template v-for="(link, index) in props.leads.links" :key="index">
                 <button
