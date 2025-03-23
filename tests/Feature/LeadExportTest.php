@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class LeadExportTest extends TestCase
 {
-use RefreshDatabase;
+    use RefreshDatabase;
 
     public function test_lead_export()
     {

@@ -9,11 +9,12 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class GenerateTestExcel extends Command
 {
     protected $signature = 'generate:test-excel';
+
     protected $description = 'Generate a test Excel file for import testing';
 
     public function handle()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->setCellValue('A1', 'Name');
